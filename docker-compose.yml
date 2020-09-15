@@ -1,0 +1,110 @@
+version: '3'
+
+#Docker Networks
+networks:
+    general:
+      driver: bridge
+
+services:
+
+    elasticsearch1:
+        container_name: es1
+        build: ./docker-config/elasticsearch
+        ports:
+          - "9200:9200"
+          - "9300:9300"
+        restart: always
+        volumes:
+            - ./docker-data/es1:/usr/share/elasticsearch/data
+        networks: 
+            - general
+        environment:
+            - node.name=es1
+            - cluster.name=es-docker-cluster
+            - discovery.type=single-node
+    
+    redis1:
+        container_name: redis1
+        build: ./docker-config/redis
+        restart: always
+        ports: 
+            - "6379:6379"
+        volumes: 
+            - ./docker-data/redis1:/data
+        networks: 
+            - general
+
+    # MySql
+    mysql1:
+        container_name: mysql1
+        build: ./docker-config/mysql
+        restart: unless-stopped
+        tty: true
+        ports:
+            - '33061:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            # MYSQL_DATABASE: logix_crm
+            # MYSQL_USER: app
+            # MYSQL_PASSWORD: app123
+        volumes:
+            - ./docker-config/mysql/init:/docker-entrypoint-initdb.d
+            - ./docker-data/mysql:/var/lib/mysql:rw
+            - ./docker-config/mysql/my.cnf:/etc/mysql/my.cnf
+        networks:
+            - general
+
+    zookeeper:
+        image: bitnami/zookeeper:latest
+        hostname: zookeeper
+        privileged: true
+        environment:
+            ALLOW_ANONYMOUS_LOGIN: "yes"
+            ZOO_AUTOPURGE_INTERVAL: 1
+            ZOO_AUTOPURGE_RETAIN_COUNT: 3
+        # volumes:
+        #     - ./docker-data/zookeeper/data:/bitnami/zookeeper
+        #    - ./docker-config/zookeeper/zoo.cfg:/opt/bitnami/zookeeper/conf/zoo.cfg
+        ports:
+            - "2181:2181"
+        networks:
+            - general
+
+
+    kafka1:
+        image: wurstmeister/kafka
+        ports:
+            - "9095:9092"
+        environment:
+            KAFKA_ADVERTISED_HOST_NAME: host.docker.internal
+            KAFKA_ADVERTISED_PORT: 9095
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_LOG_DIRS: /kafka/logs
+            KAFKA_BROKER_ID: 500
+            KAFKA_offsets_topic_replication_factor: 2
+        # volumes:
+        #     - ./docker-data/kafka/var/run/docker.sock:/var/run/docker.sock
+        #     - ./docker-data/kafka/broker_500:/kafka
+        networks:
+            - general
+        depends_on:
+            - zookeeper
+
+    kafka2:
+        image: wurstmeister/kafka
+        ports:
+            - "9096:9092"
+        environment:
+            KAFKA_ADVERTISED_HOST_NAME: host.docker.internal
+            KAFKA_ADVERTISED_PORT: 9096
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_LOG_DIRS: /kafka/logs
+            KAFKA_BROKER_ID: 501
+            KAFKA_offsets_topic_replication_factor: 2
+        # volumes:
+        #     - ./docker-data/kafka/var/run/docker.sock:/var/run/docker.sock
+        #     - ./docker-data/kafka/broker_501:/kafka
+        networks:
+            - general
+        depends_on:
+            - zookeeper
