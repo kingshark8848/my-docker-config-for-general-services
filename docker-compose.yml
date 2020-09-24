@@ -51,6 +51,7 @@ services:
             - ./docker-config/mysql/init:/docker-entrypoint-initdb.d
             - ./docker-data/mysql:/var/lib/mysql:rw
             - ./docker-config/mysql/my.cnf:/etc/mysql/my.cnf
+            - ./docker-data/mysql1_resource:/resource
         networks:
             - general
 
